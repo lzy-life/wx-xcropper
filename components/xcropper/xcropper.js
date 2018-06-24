@@ -500,15 +500,15 @@ Component({
     },
     // 裁切框拖拽点 touch 事件处理
     dragMove(evt) {
-      let winW = this.data.device.windowWidth, winH = this.data.device.windowHeight;
-      let cropperOpts = this.data.cropperOpts;
       // console.log("dragMove");
+      let winW = this.data.device.windowWidth, winH = this.data.device.windowHeight;
+      let cropper = this.data.cropper;
+      let cropperOpts = this.data.cropperOpts;
       var direction = evt.target.dataset.drag;
       let xSize = this.boxEvtX - evt.touches[0].clientX;
       let ySize = this.boxEvtY - evt.touches[0].clientY;
       let absX = Math.abs(xSize), absY = Math.abs(ySize);
-      // console.log(`S(${this.boxEvtX},${this.boxEvtY}); M(${evt.touches[0].clientX},${evt.touches[0].clientY})`);
-      // return false;
+      // 处理不同的方向的拖动
       switch (direction) {
         case "l":
           if (xSize >= 0) {
@@ -533,10 +533,10 @@ Component({
         case "t":
           if (ySize >= 0) {
             ySize = absY;
-            //this.data.debug && console.log("Top: 放大");
+            // this.data.debug && console.log("Top: 放大");
           } else {
             ySize = -absY;
-            //this.data.debug && console.log("Top: 缩小");
+            // this.data.debug && console.log("Top: 缩小");
           }
           xSize = 0;
           break;
@@ -638,32 +638,45 @@ Component({
           console.warn("Unknown Direction");
           break;
       }
+      // 缩放的处理
       if (xSize !== 0) {
-        let newBoxW = cropperOpts.boxW + xSize * this.data.moveStep;
-        if (newBoxW <= cropperOpts.boxMaxW && newBoxW >= cropperOpts.boxMinW) {
+        let newBoxW = cropperOpts.boxDefW + xSize;
+        let newBoxH = newBoxW / cropperOpts.ratio;
+        //
+        if (direction == "l" || direction == "tl" || direction == "bl") {
+          if (xSize > 0) {
+            cropperOpts.boxX = cropperOpts.boxInitX + xSize;
+          } else {
+            cropperOpts.boxX = cropperOpts.boxInitX - xSize;
+          }
+        }
+        if (newBoxW <= cropperOpts.boxMaxW && newBoxW >= cropperOpts.boxMinW && cropperOpts.boxY + newBoxH <= cropper.y + cropper.imgH) {
           cropperOpts.boxW = newBoxW;
           if (cropperOpts.ratio) {
-            cropperOpts.boxH = newBoxW / cropperOpts.ratio;
+            cropperOpts.boxH = newBoxH;
             // this.data.debug && console.log(cropperOpts);
           } else {
             // this.data.debug && console.log("【自定义】高度不做改变", cropperOpts.boxDefW, xSize, cropperOpts.boxMaxW);
           }
-          // 更新裁切框位置(不居中)
-          // cropperOpts.boxX = cropperOpts.boxX - xSize * this.data.moveStep;
-          // cropperOpts.boxY = cropperOpts.boxY - ySize * this.data.moveStep;
-          // 更新裁切框位置(居中)
-          cropperOpts.boxX = Math.abs(winW - cropperOpts.boxW) / 2;
-          cropperOpts.boxY = Math.abs(winH - cropperOpts.boxH) / 2;
-          //
-          cropperOpts.boxInitX = cropperOpts.boxX;
-          cropperOpts.boxInitY = cropperOpts.boxY;
-          this.setData(this.data);
         } else {
           // this.data.debug && console.log("宽度高度已达到临界值");
         }
+        // 更新裁切框位置(居中)
+        // cropperOpts.boxX = Math.abs(winW - cropperOpts.boxW) / 2;
+        // cropperOpts.boxY = Math.abs(winH - cropperOpts.boxH) / 2;
+        this.setData(this.data);
       } else if (ySize !== 0) {
-        let newBoxH = cropperOpts.boxH + ySize * this.data.moveStep;
-        if (newBoxH <= cropperOpts.boxMaxH && newBoxH >= cropperOpts.boxMinH) {
+        let newBoxH = cropperOpts.boxDefH + ySize;
+        let newBoxW = newBoxH * cropperOpts.ratio;
+        //
+        if (direction == "t" || direction == "tl" || direction == "tr") {
+          if (ySize > 0) {
+            cropperOpts.boxY = cropperOpts.boxInitY + ySize;
+          } else {
+            cropperOpts.boxY = cropperOpts.boxInitY - ySize;
+          }
+        }
+        if (newBoxH <= cropperOpts.boxMaxH && newBoxH >= cropperOpts.boxMinH && cropperOpts.boxX + newBoxW <= cropper.x + cropper.imgW) {
           cropperOpts.boxH = newBoxH;
           if (cropperOpts.ratio) {
             cropperOpts.boxW = newBoxH * cropperOpts.ratio;
@@ -671,28 +684,28 @@ Component({
           } else {
             // this.data.debug && console.log("【自定义】宽度不做改变", cropperOpts.boxH, ySize, cropperOpts.boxMaxH);
           }
-          // 更新裁切框位置(不居中)
-          // cropperOpts.boxX = cropperOpts.boxX - xSize * this.data.moveStep;
-          // cropperOpts.boxY = cropperOpts.boxY - ySize * this.data.moveStep;
-          // 更新裁切框位置(居中)
-          cropperOpts.boxX = Math.abs(winW - cropperOpts.boxW) / 2;
-          cropperOpts.boxY = Math.abs(winH - cropperOpts.boxH) / 2;
-          //
-          cropperOpts.boxInitX = cropperOpts.boxX;
-          cropperOpts.boxInitY = cropperOpts.boxY;
-          this.setData(this.data);
         } else {
-          this.data.debug && console.log("高度已达到临界值");
+          // this.data.debug && console.log("高度已达到临界值");
         }
+        // 更新裁切框位置(居中)
+        // cropperOpts.boxX = Math.abs(winW - cropperOpts.boxW) / 2;
+        // cropperOpts.boxY = Math.abs(winH - cropperOpts.boxH) / 2;
+        this.setData(this.data);
       } else {
-        this.data.debug && console.log("无变化");
+        // this.data.debug && console.log("无变化");
       }
     },
     // 裁切框拖拽点 touch 事件处理
     dragStop(evt) {
       // console.log("dragStop");
+      let cropperOpts = this.data.cropperOpts;
+      cropperOpts.boxInitX = cropperOpts.boxX;
+      cropperOpts.boxInitY = cropperOpts.boxY;
+      cropperOpts.boxDefW = cropperOpts.boxW;
+      cropperOpts.boxDefH = cropperOpts.boxH;
       delete this.boxEvtX;
       delete this.boxEvtY;
+      this.setData(this.data);
     },
     // 裁切框 touch 事件处理
     boxStartMove(evt) {
