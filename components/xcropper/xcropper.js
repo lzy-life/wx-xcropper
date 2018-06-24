@@ -282,44 +282,51 @@ Component({
     },
     // 初始化边界坐标
     initBoundary() {
-      let winW = this.data.device.windowWidth, winH = this.data.device.windowHeight;
-      let cropperOpts = this.data.cropperOpts;
-      let cropper = this.data.cropper;
-      // 选取框四个点坐标
-      this.data.boundary.box = [
-        {
-          x: (winW - cropperOpts.boxW) / 2,
-          y: (winH - cropperOpts.boxH) / 2,
-        }, {
-          x: (winW - cropperOpts.boxW) / 2 + cropperOpts.boxW,
-          y: (winH - cropperOpts.boxH) / 2,
-        }, {
-          x: (winW - cropperOpts.boxW) / 2,
-          y: (winH - cropperOpts.boxH) / 2 + cropperOpts.boxH,
-        }, {
-          x: (winW - cropperOpts.boxW) / 2 + cropperOpts.boxW,
-          y: (winH - cropperOpts.boxH) / 2 + cropperOpts.boxH,
-        }
-      ];
-      // 图片四个点坐标
-      this.data.boundary.img = [
-        {
-          x: this._numUtil((winW - cropper.imgW) / 2, Math.max(cropper.x, 0), "gt"), // 0
-          y: this._numUtil((winH - cropper.imgH) / 2, Math.max(cropper.y, 0), "gt"), // 0
-        }, {
-          x: this._numUtil((winW - cropper.imgW) / 2 + cropper.imgW, Math.min(cropper.x + cropper.imgW, winW), "lt"),
-          y: this._numUtil((winH - cropper.imgH) / 2, Math.max(cropper.y, 0), "gt"),
-        }, {
-          x: this._numUtil((winW - cropper.imgW) / 2, Math.max(cropper.x, 0), "gt"),
-          y: this._numUtil((winH - cropper.imgH) / 2 + cropper.imgH, Math.min(cropper.y + cropper.imgH, winH), "lt"),
-        }, {
-          x: this._numUtil((winW - cropper.imgW) / 2 + cropper.imgW, Math.min(cropper.x + cropper.imgW, winW), "lt"),
-          y: this._numUtil((winH - cropper.imgH) / 2 + cropper.imgH, Math.min(cropper.y + cropper.imgH, winH), "lt"),
-        }
-      ];
+      this.initBoxBoundary();
+      this.initImgBoundary();
       //
       this.data.inited = true;
       this.setData(this.data);
+    },
+    initBoxBoundary() {
+      let winW = this.data.device.windowWidth, winH = this.data.device.windowHeight;
+      let cropperOpts = this.data.cropperOpts;
+      // 选取框四个点坐标
+      this.data.boxBoundary = [
+        {
+          x: Math.max(cropperOpts.boxX, 0),
+          y: Math.max(cropperOpts.boxY, 0)
+        }, {
+          x: Math.min(cropperOpts.boxX + cropperOpts.boxW, winW),
+          y: Math.max(cropperOpts.boxY, 0)
+        }, {
+          x: Math.max(cropperOpts.boxX, 0),
+          y: Math.min(cropperOpts.boxY + cropperOpts.boxH, winH)
+        }, {
+          x: Math.min(cropperOpts.boxX + cropperOpts.boxW, winW),
+          y: Math.min(cropperOpts.boxY + cropperOpts.boxH, winH)
+        }
+      ];
+    },
+    initImgBoundary() {
+      let winW = this.data.device.windowWidth, winH = this.data.device.windowHeight;
+      let cropper = this.data.cropper;
+      // 图片四个点坐标
+      this.data.imgBoundary = [
+        {
+          x: Math.max(cropper.x, 0),
+          y: Math.max(cropper.y, 0)
+        }, {
+          x: Math.min(cropper.x + cropper.imgW, winW),
+          y: Math.max(cropper.y, 0)
+        }, {
+          x: Math.max(cropper.x, 0),
+          y: Math.min(cropper.y + cropper.imgH, winH)
+        }, {
+          x: Math.min(cropper.x + cropper.imgW, winW),
+          y: Math.min(cropper.y + cropper.imgH, winH)
+        }
+      ];
     },
     // 数字比较辅助方法
     _numUtil(num, def, mode) {
@@ -360,8 +367,8 @@ Component({
       if (!this.data.imageSrc) return false;
       //
       this.data.touching = true;
-      this.data.cropper.oldX = evt.touches[0].clientX;
-      this.data.cropper.oldY = evt.touches[0].clientY;
+      this.imgEvtX = evt.touches[0].clientX;
+      this.imgEvtY = evt.touches[0].clientY;
       //
       if (evt.touches.length >= 2) {
         let xMove = evt.touches[1].clientX - evt.touches[0].clientX;
@@ -377,7 +384,8 @@ Component({
       // 过滤非法操作
       if (!this.data.imageSrc || !this.data.touching) return false;
       //
-      let cropper = this.data.cropper, cropperOpts = this.data.cropperOpts, boundary = this.data.boundary;
+      let cropper = this.data.cropper, cropperOpts = this.data.cropperOpts;
+      let boxBoundary = this.data.boxBoundary;
       if (evt.touches.length >= 2) {
         let xMove = evt.touches[1].clientX - evt.touches[0].clientX;
         let yMove = evt.touches[1].clientY - evt.touches[0].clientY;
@@ -391,60 +399,34 @@ Component({
           this.scale();
         }
       } else {
-        let xMove = (evt.touches[0].clientX - cropper.oldX) * 0.09;
-        let yMove = (evt.touches[0].clientY - cropper.oldY) * 0.09;
+        let xMove = (evt.touches[0].clientX - this.imgEvtX) * 0.09;
+        let yMove = (evt.touches[0].clientY - this.imgEvtY) * 0.09;
         // X
         if (Math.abs(xMove) >= 1 && Math.abs(yMove) < 1) {
           cropper.x = cropper.x + Math.round(xMove)
           // 禁止超出边框
-          if (cropper.x >= boundary.box[0].x) {
-            cropper.x = boundary.box[0].x;
+          if (cropper.x >= boxBoundary[0].x) {
+            cropper.x = boxBoundary[0].x;
           }
-          if (cropper.x <= -(cropper.imgW - boundary.box[1].x)) {
-            cropper.x = -(cropper.imgW - boundary.box[1].x);
+          if (cropper.x <= -(cropper.imgW - boxBoundary[1].x)) {
+            cropper.x = -(cropper.imgW - boxBoundary[1].x);
           }
-          // 重新计算裁切框位置坐标
-          if (cropper.x > cropperOpts.boxX) {
-            cropperOpts.boxX = cropper.x;
-          } else if (cropper.x + cropper.imgW < cropperOpts.boxX + cropperOpts.boxW) {
-            cropperOpts.boxX = cropper.x + cropper.imgW - cropperOpts.boxW;
-          }
-          if (cropper.y > cropperOpts.boxY) {
-            cropperOpts.boxY = cropper.y;
-          } else if (cropper.y + cropper.imgH < cropperOpts.boxY + cropperOpts.boxH) {
-            cropperOpts.boxY = cropper.y + cropper.imgH - cropperOpts.boxH;
-          }
-          cropperOpts.boxInitX = cropperOpts.boxX;
-          cropperOpts.boxInitY = cropperOpts.boxY;
           // 重新计算边界
-          this.initBoundary();
+          this.initBoundary("img");
           // this.setData(this.data);
         }
         // Y
         if (Math.abs(xMove) < 1 && Math.abs(yMove) >= 1) {
           cropper.y = cropper.y + Math.round(yMove);
           // 禁止超出边框
-          if (cropper.y >= boundary.box[0].y) {
-            cropper.y = boundary.box[0].y;
+          if (cropper.y >= boxBoundary[0].y) {
+            cropper.y = boxBoundary[0].y;
           }
-          if (cropper.y <= -(cropper.imgH - boundary.box[2].y)) {
-            cropper.y = -(cropper.imgH - boundary.box[2].y);
+          if (cropper.y <= -(cropper.imgH - boxBoundary[2].y)) {
+            cropper.y = -(cropper.imgH - boxBoundary[2].y);
           }
-          // 重新计算裁切框位置坐标
-          if (cropper.x > cropperOpts.boxX) {
-            cropperOpts.boxX = cropper.x;
-          } else if (cropper.x + cropper.imgW < cropperOpts.boxX + cropperOpts.boxW) {
-            cropperOpts.boxX = cropper.x + cropper.imgW - cropperOpts.boxW;
-          }
-          if (cropper.y > cropperOpts.boxY) {
-            cropperOpts.boxY = cropper.y;
-          } else if (cropper.y + cropper.imgH < cropperOpts.boxY + cropperOpts.boxH) {
-            cropperOpts.boxY = cropper.y + cropper.imgH - cropperOpts.boxH;
-          }
-          cropperOpts.boxInitX = cropperOpts.boxX;
-          cropperOpts.boxInitY = cropperOpts.boxY;
           // 重新计算边界
-          this.initBoundary();
+          this.initBoundary("img");
           // this.setData(this.data);
         }
         // X && Y
@@ -452,33 +434,20 @@ Component({
           cropper.x = cropper.x + Math.round(xMove);
           cropper.y = cropper.y + Math.round(yMove);
           //禁止超出边框
-          if (cropper.x >= boundary.box[0].x) {
-            cropper.x = boundary.box[0].x;
+          if (cropper.x >= boxBoundary[0].x) {
+            cropper.x = boxBoundary[0].x;
           }
-          if (cropper.x <= -(cropper.imgW - boundary.box[1].x)) {
-            cropper.x = -(cropper.imgW - boundary.box[1].x);
+          if (cropper.x <= -(cropper.imgW - boxBoundary[1].x)) {
+            cropper.x = -(cropper.imgW - boxBoundary[1].x);
           }
-          if (cropper.y >= boundary.box[0].y) {
-            cropper.y = boundary.box[0].y;
+          if (cropper.y >= boxBoundary[0].y) {
+            cropper.y = boxBoundary[0].y;
           }
-          if (cropper.y <= -(cropper.imgH - boundary.box[2].y)) {
-            cropper.y = -(cropper.imgH - boundary.box[2].y);
+          if (cropper.y <= -(cropper.imgH - boxBoundary[2].y)) {
+            cropper.y = -(cropper.imgH - boxBoundary[2].y);
           }
-          // 重新计算裁切框位置坐标
-          if (cropper.x > cropperOpts.boxX) {
-            cropperOpts.boxX = cropper.x;
-          } else if (cropper.x + cropper.imgW < cropperOpts.boxX + cropperOpts.boxW) {
-            cropperOpts.boxX = cropper.x + cropper.imgW - cropperOpts.boxW;
-          }
-          if (cropper.y > cropperOpts.boxY) {
-            cropperOpts.boxY = cropper.y;
-          } else if (cropper.y + cropper.imgH < cropperOpts.boxY + cropperOpts.boxH) {
-            cropperOpts.boxY = cropper.y + cropper.imgH - cropperOpts.boxH;
-          }
-          cropperOpts.boxInitX = cropperOpts.boxX;
-          cropperOpts.boxInitY = cropperOpts.boxY;
           // 重新计算边界
-          this.initBoundary();
+          this.initBoundary("img");
           // this.setData(this.data);
         }
       }
@@ -487,10 +456,8 @@ Component({
     touchend: function(evt) {
       if (!this.data.imageSrc || !this.data.touching) return false;
       this.data.touching = false;
-      this.data.cropperOpts.boxX = Math.abs(this.data.device.windowWidth - this.data.cropperOpts.boxW) / 2;
-      this.data.cropperOpts.boxY = Math.abs(this.data.device.windowHeight - this.data.cropperOpts.boxH) / 2;
-      this.data.cropper.oldX = 0;
-      this.data.cropper.oldY = 0;
+      delete this.imgEvtX;
+      delete this.imgEvtY;
     },
     // 裁切框拖拽点 touch 事件处理
     dragStart(evt) {
@@ -641,23 +608,25 @@ Component({
       // 缩放的处理
       if (xSize !== 0) {
         let newBoxW = cropperOpts.boxDefW + xSize;
-        let newBoxH = newBoxW / cropperOpts.ratio;
-        //
-        if (direction == "l" || direction == "tl" || direction == "bl") {
-          if (xSize > 0) {
-            cropperOpts.boxX = cropperOpts.boxInitX + xSize;
-          } else {
-            cropperOpts.boxX = cropperOpts.boxInitX - xSize;
-          }
+        let newBoxH = 0;
+        if (cropperOpts.ratio) {
+          newBoxH = newBoxW / cropperOpts.ratio;
+        } else {
+          newBoxH = cropperOpts.boxH;
         }
-        if (newBoxW <= cropperOpts.boxMaxW && newBoxW >= cropperOpts.boxMinW && cropperOpts.boxY + newBoxH <= cropper.y + cropper.imgH) {
+        //
+        let newBoxX = cropperOpts.boxInitX;
+        if (direction == "l" || direction == "tl" || direction == "bl") {
+          newBoxX = cropperOpts.boxInitX - xSize;
+        }
+        if (
+          newBoxW <= cropperOpts.boxMaxW && newBoxW >= cropperOpts.boxMinW && 
+          newBoxX >= cropper.x && newBoxX + newBoxW <= cropper.x + cropper.imgW &&
+          cropperOpts.boxY + newBoxH <= cropper.y + cropper.imgH
+        ) {
           cropperOpts.boxW = newBoxW;
-          if (cropperOpts.ratio) {
-            cropperOpts.boxH = newBoxH;
-            // this.data.debug && console.log(cropperOpts);
-          } else {
-            // this.data.debug && console.log("【自定义】高度不做改变", cropperOpts.boxDefW, xSize, cropperOpts.boxMaxW);
-          }
+          cropperOpts.boxH = newBoxH;
+          cropperOpts.boxX = newBoxX;
         } else {
           // this.data.debug && console.log("宽度高度已达到临界值");
         }
@@ -667,23 +636,25 @@ Component({
         this.setData(this.data);
       } else if (ySize !== 0) {
         let newBoxH = cropperOpts.boxDefH + ySize;
-        let newBoxW = newBoxH * cropperOpts.ratio;
-        //
-        if (direction == "t" || direction == "tl" || direction == "tr") {
-          if (ySize > 0) {
-            cropperOpts.boxY = cropperOpts.boxInitY + ySize;
-          } else {
-            cropperOpts.boxY = cropperOpts.boxInitY - ySize;
-          }
+        let newBoxW = 0;
+        if (cropperOpts.ratio) {
+          newBoxW = newBoxH * cropperOpts.ratio;
+        } else {
+          newBoxW = cropperOpts.boxW;
         }
-        if (newBoxH <= cropperOpts.boxMaxH && newBoxH >= cropperOpts.boxMinH && cropperOpts.boxX + newBoxW <= cropper.x + cropper.imgW) {
+        //
+        let newBoxY = cropperOpts.boxInitY;
+        if (direction == "t" || direction == "tl" || direction == "tr") {
+          newBoxY = cropperOpts.boxInitY - ySize;
+        }
+        if (
+          newBoxH <= cropperOpts.boxMaxH && newBoxH >= cropperOpts.boxMinH &&
+          newBoxY >= cropper.y && newBoxY + newBoxH <= cropper.y + cropper.imgH &&
+          cropperOpts.boxX + newBoxW <= cropper.x + cropper.imgW
+        ) {
           cropperOpts.boxH = newBoxH;
-          if (cropperOpts.ratio) {
-            cropperOpts.boxW = newBoxH * cropperOpts.ratio;
-            // this.data.debug && console.log(cropperOpts);
-          } else {
-            // this.data.debug && console.log("【自定义】宽度不做改变", cropperOpts.boxH, ySize, cropperOpts.boxMaxH);
-          }
+          cropperOpts.boxW = newBoxW;
+          cropperOpts.boxY = newBoxY;
         } else {
           // this.data.debug && console.log("高度已达到临界值");
         }
@@ -705,7 +676,8 @@ Component({
       cropperOpts.boxDefH = cropperOpts.boxH;
       delete this.boxEvtX;
       delete this.boxEvtY;
-      this.setData(this.data);
+      this.initBoundary();
+      // this.setData(this.data);
     },
     // 裁切框 touch 事件处理
     boxStartMove(evt) {
@@ -722,7 +694,7 @@ Component({
     // 裁切框 touch 事件处理
     boxMoveing(evt) {
       if (!this.boxMoving) return false;
-      let cropperOpts = this.data.cropperOpts, cropper = this.data.cropper, boundary = this.data.boundary;
+      let cropperOpts = this.data.cropperOpts, cropper = this.data.cropper, imgBoundary = this.data.imgBoundary;
       if (evt.touches.length == 2) {
         // scale
         let xMove = evt.touches[1].clientX - evt.touches[0].clientX;
@@ -746,44 +718,47 @@ Component({
         if (absX >= 1 && absY < 1) {
           cropperOpts.boxX = cropperOpts.boxInitX - xSize;
           //禁止超出边框
-          if (cropperOpts.boxX <= boundary.img[0].x) {
-            cropperOpts.boxX = boundary.img[0].x;
+          if (cropperOpts.boxX <= imgBoundary[0].x) {
+            cropperOpts.boxX = imgBoundary[0].x;
           }
-          if (cropperOpts.boxX >= boundary.img[1].x - cropperOpts.boxW) {
-            cropperOpts.boxX = boundary.img[1].x - cropperOpts.boxW;
+          if (cropperOpts.boxX >= imgBoundary[1].x - cropperOpts.boxW) {
+            cropperOpts.boxX = imgBoundary[1].x - cropperOpts.boxW;
           }
-          this.setData(this.data);
+          this.initBoundary("box");
+          // this.setData(this.data);
         }
         // Y
         if (absX < 1 && absY >= 1) {
           cropperOpts.boxY = cropperOpts.boxInitY - ySize;
           //禁止超出边框
-          if (cropperOpts.boxY <= boundary.img[0].y) {
-            cropperOpts.boxY = boundary.img[0].y;
+          if (cropperOpts.boxY <= imgBoundary[0].y) {
+            cropperOpts.boxY = imgBoundary[0].y;
           }
-          if (cropperOpts.boxY >= boundary.img[2].y - cropperOpts.boxH) {
-            cropperOpts.boxY = boundary.img[2].y - cropperOpts.boxH;
+          if (cropperOpts.boxY >= imgBoundary[2].y - cropperOpts.boxH) {
+            cropperOpts.boxY = imgBoundary[2].y - cropperOpts.boxH;
           }
-          this.setData(this.data);
+          this.initBoundary("box");
+          // this.setData(this.data);
         }
         // X && Y
         if (absX >= 1 && absY >= 1) {
           cropperOpts.boxX = cropperOpts.boxInitX - xSize;
           cropperOpts.boxY = cropperOpts.boxInitY - ySize;
           //禁止超出边框
-          if (cropperOpts.boxX <= boundary.img[0].x) {
-            cropperOpts.boxX = boundary.img[0].x;
+          if (cropperOpts.boxX <= imgBoundary[0].x) {
+            cropperOpts.boxX = imgBoundary[0].x;
           }
-          if (cropperOpts.boxX >= boundary.img[1].x - cropperOpts.boxW) {
-            cropperOpts.boxX = boundary.img[1].x - cropperOpts.boxW;
+          if (cropperOpts.boxX >= imgBoundary[1].x - cropperOpts.boxW) {
+            cropperOpts.boxX = imgBoundary[1].x - cropperOpts.boxW;
           }
-          if (cropperOpts.boxY <= boundary.img[0].y) {
-            cropperOpts.boxY = boundary.img[0].y;
+          if (cropperOpts.boxY <= imgBoundary[0].y) {
+            cropperOpts.boxY = imgBoundary[0].y;
           }
-          if (cropperOpts.boxY >= boundary.img[2].y - cropperOpts.boxH) {
-            cropperOpts.boxY = boundary.img[2].y - cropperOpts.boxH;
+          if (cropperOpts.boxY >= imgBoundary[2].y - cropperOpts.boxH) {
+            cropperOpts.boxY = imgBoundary[2].y - cropperOpts.boxH;
           }
-          this.setData(this.data);
+          this.initBoundary("box");
+          // this.setData(this.data);
         }
       }
     },
