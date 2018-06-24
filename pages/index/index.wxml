@@ -13,7 +13,7 @@
 </view>
 
 <view class='cropper-wrapper' wx:if="{{enableCropper}}">
-  <xcropper wx:if="{{cutImages}}" images="{{cutImages}}" cropperOpts="{{cropperOpts}}" bind:success="success" bind:failure="failure"></xcropper>
+  <xcropper wx:if="{{cutImages}}" images="{{cutImages}}" bind:success="success" bind:failure="failure"></xcropper>
 </view>
 
 <wxs module="m">

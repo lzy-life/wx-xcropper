@@ -27,7 +27,7 @@ Page({
     images: null, // 裁切完的图片
     enableCropper: false, // 是否启用裁切
     cutImages: null, // 需要裁切的图片
-    cropperOpts: {
+    cropperOpts: { // 裁切的配置
       ratio: 16/9
     }
   },
@@ -122,12 +122,26 @@ page, .cropper-wrapper{
 
 
 ### 组件参数说明
-|     名称     |          数据类型           | 是否必要 |
-| :---------: | :-------------------------:| :-----: |
-|    images   | String/Array&lt;String&gt; |  **Y**  |
-| cropperOpts |           Object           |   *N*   |
+|     名称     |          数据类型          | 是否必要 |              描述             |
+| :----------: | :------------------------: | :-----: | :---------------------------: |
+|     images   | String/Array&lt;String&gt; |  **Y**  |   需要裁切的图片路径或路径数组   |
+|  cropperOpts |           Object           |   *N*   | 裁切选取框配置参数，如位置、大小 |
+| bind:success |          Function          |  **Y**  | 裁切成功的回调函数，临时文件路径通过`evt.detail`获取，多图`[{size:xxx,path:"xxx"}]`，单图`{size:xxx,path:"xxx"}` |
+| bind:failure |          Function          |  **Y**  | 裁切失败的回调函数 |
 
-
+#### cropperOpts参数说明
+|    名称    |            类型            |    默认值   |                                     描述                                     |
+| :--------: | :-----------------------: | :---------: | :-------------------------------------------------------------------------: |
+|    boxX    |          Number           |  undefined  |              选取框的X轴坐标，相对屏幕左上角(优先`boxOffsetX`参数)             |
+|    boxY    |          Number           |  undefined  |              选取框的Y轴坐标，相对屏幕左上角(优先`boxOffsetY`参数)             |
+| boxOffsetX |          Number           |  undefined  |                         选取框在图片左上角的X轴偏移值                         |
+| boxOffsetY |          Number           |  undefined  |                         选取框在图片左上角的Y轴偏移值                         |
+|    boxW    |          Number           |     320,    |                                  选取框的宽                                  |
+|    boxH    |          Number           |     320     |                                  选取框的高                                  |
+|   ratio    |          Number           |      1      |                                 裁切的宽高比                                 |
+|    mode    |          String           |   "ratio"   | 裁切的模式: ratio-比例裁切,以原图尺寸等比裁切; size-尺寸裁切,以选取框尺寸倍数裁切 |
+| ~~shape~~  |          String           | "rectangle" |                   裁切的形状: rectangle: 矩形; circle: 圆形                   |
+|   sizes    | Number/Array&lt;Number&gt |  undefined  |                       生成图片的尺寸（此时裁切模式无效）                       |
 
 > **提示：**想了解更多，请查看源码，注释超级详细。
 

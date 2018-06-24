@@ -4,8 +4,11 @@
     <canvas canvas-id="original" class='originalCanvas' disable-scroll="true"
      style="width:{{originalImage.width}}px;height:{{originalImage.height}}px;">
     </canvas>
-    <block wx:for="{{cropperOpts.sizes}}" wx:for-item="size" wx:for-index="i" wx:key="{{i}}">
+    <block wx:if="{{m.isArray(cropperOpts.sizes)}}" wx:for="{{cropperOpts.sizes}}" wx:for-item="size" wx:for-index="i" wx:key="{{i}}">
       <canvas canvas-id='image{{size}}' style="width:{{size}}px;height:{{size/cropperOpts.ratio}}px;"></canvas>
+    </block>
+    <block wx:if="{{m.isNumber(cropperOpts.sizes)}}" >
+      <canvas canvas-id='image{{cropperOpts.sizes}}' style="width:{{cropperOpts.sizes}}px;height:{{cropperOpts.sizes/cropperOpts.ratio}}px;"></canvas>
     </block>
   </view>
   <view class='cropper' hidden='{{0}}' bindtouchstart="touchstart" bindtouchmove="touchmove" bindtouchend='touchend'>
@@ -66,8 +69,16 @@
   </view>
 </view>
 <wxs module="m">
+  function isArray(arg) {
+    return arg && typeof arg == "object" && typeof arg.splice == "function";
+  }
+  function isNumber(arg) {
+    return arg && typeof arg == "number";
+  }
   function toFixed(number, size) {
     return isNaN(number) ? number : Number(number).toFixed(size||3);
   }
+  module.exports.isArray = isArray;
+  module.exports.isNumber = isNumber;
   module.exports.toFixed = toFixed;
 </wxs>

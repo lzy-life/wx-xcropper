@@ -23,14 +23,16 @@ Component({
     cropperOpts: {
       type: Object,
       value: {
-        boxX: 0,             // 选取框的X
-        boxY: 0,             // 选取框的Y
-        boxW: 300,           // 选取框的宽
-        boxH: 300,           // 选取框的高
-        ratio: 1,            // 裁切的宽高比
-        mode: "ratio",       // 裁切的模式: ratio-比例裁切,以原图尺寸等比裁切; size-尺寸裁切,以选取框尺寸倍数裁切
-        shape: "rectangle",  // 裁切的形状: rectangle: 矩形; circle: 圆形
-        // sizes: [48, 36, 24]  // 裁切的尺寸: 生成的图片尺寸(宽)大小【存在Bug，Promise.all仅执行了第一个】
+        boxX: undefined,       // 选取框的X轴坐标，相对屏幕左上角
+        boxY: undefined,       // 选取框的Y轴坐标，相对屏幕左上角
+        boxOffsetX: undefined, // 选取框在图片左上角的X轴偏移值
+        boxOffsetY: undefined, // 选取框在图片左上角的Y轴偏移值
+        boxW: 320,             // 选取框的宽
+        boxH: 320,             // 选取框的高
+        ratio: 1,              // 裁切的宽高比
+        mode: "ratio",         // 裁切的模式: ratio-比例裁切,以原图尺寸等比裁切; size-尺寸裁切,以选取框尺寸倍数裁切
+        shape: "rectangle",    // 裁切的形状: rectangle: 矩形; circle: 圆形
+        sizes: undefined       // 裁切的尺寸: 生成的图片尺寸(宽)大小【为数字数组时存在Bug，Promise.all仅执行了第一个】
       }
     }
   },
@@ -87,12 +89,14 @@ Component({
     initImages(imgs) {
       // 校验裁切必要的配置参数
       let cropperOpts = this.data.cropperOpts;
+      // 有参数
       if (Object.keys(cropperOpts).length) {
-        if (isNaN(cropperOpts.boxX)) cropperOpts.boxX = 0;
-        if (isNaN(cropperOpts.boxY)) cropperOpts.boxY = 0;
-        if (isNaN(cropperOpts.boxW)) cropperOpts.boxW = 300;
-        if (isNaN(cropperOpts.boxH)) cropperOpts.boxH = 300;
-        if (isNaN(cropperOpts.ratio)) cropperOpts.ratio = 1;
+        // 没设置比例且裁切框宽高设置不完整
+        if (isNaN(cropperOpts.ratio) && (!cropperOpts.boxW || !cropperOpts.boxH)) {
+          cropperOpts.ratio = 1;
+          cropperOpts.boxW = 320;
+          cropperOpts.boxH = 320;
+        }
         if (cropperOpts.mode != "ratio" && cropperOpts.mode != "size") cropperOpts.mode = "ratio";
         if (cropperOpts.shape != "rectangle" && cropperOpts.shape != "circle") cropperOpts.shape = "rectangle";
       } else {
@@ -149,10 +153,17 @@ Component({
     // 初始化Canvas
     initCanvas() {
       this.originalCanvas = wx.createCanvasContext('original', this);
-      if (this.data.cropperOpts.sizes) {
-        this.data.cropperOpts.sizes.forEach((size, idx) => {
-          this[`image${size}`] = wx.createCanvasContext(`image${size}`, this);
-        });
+      let sizes = this.data.cropperOpts.sizes;
+      if (sizes && (!isNaN(sizes) || Array.isArray(sizes))) {
+        if (typeof sizes == "number") {
+          sizes = [sizes];
+        }
+        console.log(sizes, sizes.length);
+        if (Array.isArray(sizes)) {
+          sizes.forEach((size, idx) => {
+            this[`image${size}`] = wx.createCanvasContext(`image${size}`, this);
+          });
+        }
       }
       // 缩放图片
       this.initScale();
@@ -214,11 +225,23 @@ Component({
           console.warn("暂无该比例的尺寸设置");
         }
       } else if (cropperOpts.boxW && cropperOpts.boxH) {
-        console.log(cropper.imgW, cropper.imgH);
-        // cropperOpts.boxW / cropperOpts.boxH
+        // 限制裁切选取框的宽高
+        if (cropperOpts.boxW > cropper.imgW || cropperOpts.boxW < 50 || cropperOpts.boxH > cropper.imgH || cropperOpts.boxH < 50) {
+          cropperOpts.boxW = cropper.imgW;
+          cropperOpts.boxH = cropper.imgH;
+          cropperOpts.ratio = cropperOpts.boxW / cropperOpts.boxH;
+        } else {
+          let newRatio = cropperOpts.boxW / cropperOpts.boxH;
+          if (ratios.includes(newRatio)) {
+            cropperOpts.ratio = newRatio;
+          } else {
+            cropperOpts.ratio = 0;
+          }
+        }
       } else {
-        cropperOpts.boxW = cropperOpts.boxH = 320;
-        cropperOpts.ratio = 1;
+        // cropperOpts.ratio = 1;
+        // cropperOpts.boxW = cropperOpts.boxH = 320;
+        console.warn(`Warn:${cropperOpts}`);
       }
       // 保存默认的裁切框尺寸，用于改变裁切框尺寸时作为运算参照
       cropperOpts.boxDefW = cropperOpts.boxW;
@@ -233,9 +256,25 @@ Component({
       }
       cropperOpts.boxMinW = 50;
       cropperOpts.boxMinH = 50;
-      // 保存裁切起点，暂不支持初始化指定
-      cropperOpts.boxX = Math.abs(winW - cropperOpts.boxW) / 2;
-      cropperOpts.boxY = Math.abs(winH - cropperOpts.boxH) / 2;
+      // 计算并保存裁切起点
+      if (
+        !isNaN(cropperOpts.boxX) && !isNaN(cropperOpts.boxY) &&
+        cropperOpts.boxX > cropper.x && cropperOpts.boxX + cropperOpts.boxW <= cropper.x + cropper.imgW &&
+        cropperOpts.boxY > cropper.y && cropperOpts.boxY + cropperOpts.boxH <= cropper.y + cropper.imgH
+      ) {
+        console.log(123)
+      } else if (
+        !isNaN(cropperOpts.boxOffsetX) && !isNaN(cropperOpts.boxOffsetY) &&
+        cropperOpts.boxOffsetY >= 0 && cropperOpts.boxOffsetY >= 0 &&
+        cropper.x + cropperOpts.boxOffsetX + cropperOpts.boxW <= cropper.x + cropper.imgW &&
+        cropper.y + cropperOpts.boxOffsetY + cropperOpts.boxH <= cropper.y + cropper.imgH
+      ) {
+        cropperOpts.boxX = cropper.x + cropperOpts.boxOffsetX;
+        cropperOpts.boxY = cropper.y + cropperOpts.boxOffsetY;
+      }else {
+        cropperOpts.boxX = Math.abs(winW - cropperOpts.boxW) / 2;
+        cropperOpts.boxY = Math.abs(winH - cropperOpts.boxH) / 2;
+      }
       cropperOpts.boxInitX = cropperOpts.boxX;
       cropperOpts.boxInitY = cropperOpts.boxY;
       // 计算边界
@@ -830,6 +869,15 @@ Component({
           //   cropper.imgH * realScale
           // );
           self.originalCanvas.draw();
+          //
+          let newImgW = cropperOpts.boxW * realScale;
+          let newImgH = cropperOpts.boxH * realScale;
+          // 不同的裁切模式生成的图像大小处理
+          // TODO:: 裁切选取框的尺寸有点小，是否需要扩大一定倍数？？
+          if (cropperOpts.mode == "size") {
+            newImgW = cropperOpts.boxW;
+            newImgH = cropperOpts.boxH;
+          }
           // 不加延时有时截取出来的是空白图片
           setTimeout(function() {
             wx.canvasToTempFilePath({
@@ -837,13 +885,12 @@ Component({
               y: (cropperOpts.boxY - cropper.y) * realScale,
               width: cropperOpts.boxW * realScale,
               height: cropperOpts.boxH * realScale,
-              destWidth: cropperOpts.boxW * realScale,// 尺寸裁切模式则图片大小为选取框大小
-              destHeight: cropperOpts.boxH * realScale,// 尺寸裁切模式则图片大小为选取框大小
+              destWidth: newImgW,
+              destHeight: newImgH,
               canvasId: 'original',
               fileType: 'jpg',
               quality: 1,
               success: function (res) {
-                console.log(res);
                 resolve({size: size || "", path: res.tempFilePath});
               },
               fail(err) {
@@ -851,7 +898,7 @@ Component({
                 reject(err);
               }
             }, self);
-          }, 500);
+          }, 50);
         }
       });
     },
@@ -866,22 +913,51 @@ Component({
           });
           console.log(imgsCutPromise);
           Promise.all(imgsCutPromise).then(res => {
-            // wx.hideToast();
-            // if (mode == "multi") {}
             console.log(res);
+            wx.hideToast();
+            if (mode == "multi") {
+              self.data.retsults.push(res);
+              if (self.data.originals.length) {
+                self.loadImage();
+              } else {
+                self.triggerEvent('success', self.data.retsults);
+              }
+            } else {
+              self.triggerEvent('success', res);
+            }
           }).catch(res => {
-            // wx.hideToast();
-            // wx.showModal({
-            //   title: '保存失败',
-            //   content: '临时图片保存失败',
-            //   showCancel: false
-            // });
             console.error(res);
-            // self.triggerEvent('failure');
+            wx.hideToast();
+            wx.showModal({
+              title: '保存失败',
+              content: '临时图片保存失败',
+              showCancel: false
+            });
+            self.triggerEvent('failure');
           });
         } else if (!isNaN(this.data.cropperOpts.sizes)){
-          // this.imageCut(this.data.cropperOpts.sizes)
-          console.log("指定尺寸裁切");
+          this.imageCut(this.data.cropperOpts.sizes).then(res => {
+            wx.hideToast();
+            if (mode == "multi") {
+              self.data.retsults.push(res);
+              if (self.data.originals.length) {
+                self.loadImage();
+              } else {
+                self.triggerEvent('success', self.data.retsults);
+              }
+            } else {
+              self.triggerEvent('success', res);
+            }
+          }).catch(res => {
+            wx.hideToast();
+            wx.showModal({
+              title: '保存失败',
+              content: '临时图片保存失败',
+              showCancel: false
+            });
+            console.error(res);
+            self.triggerEvent('failure');
+          });
         } else {
           console.log("裁切???");
         }
