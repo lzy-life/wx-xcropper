@@ -1,0 +1,32 @@
+<!--index.wxml-->
+<view class="container" wx:if="{{!enableCropper}}">
+  <block wx:if="{{m.isArray(images)}}" wx:for="images" wx:for-item="img" wx:for-index="i" wx:key="{{i}}">
+    <image src='{{img.path}}' mode='widthFix'></image>
+  </block>
+  <block wx:if="{{m.isString(images)}}">
+    <image src='{{images}}' mode='widthFix'></image>
+  </block>
+  <block wx:if="{{m.isEmpty(images)}}">
+    <text>请选择要裁切的图片</text>
+  </block>
+  <button class='btn' bindtap='chooseImage'>选择图片</button>
+</view>
+
+<view class='cropper-wrapper' wx:if="{{enableCropper}}">
+  <xcropper wx:if="{{cutImages}}" images="{{cutImages}}" cropperOpts="{{cropperOpts}}" bind:success="success" bind:failure="failure"></xcropper>
+</view>
+
+<wxs module="m">
+  function isArray(arg) {
+    return arg && typeof arg == "object" && typeof arg.splice == "function";
+  }
+  function isString(arg) {
+    return arg && typeof arg == "string";
+  }
+  function isEmpty(arg) {
+    return arg === null || arg === undefined || arg === "";
+  }
+  module.exports.isArray = isArray;
+  module.exports.isString = isString;
+  module.exports.isEmpty = isEmpty;
+</wxs>

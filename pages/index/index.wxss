@@ -1,0 +1,5 @@
+/**index.wxss**/
+page, .container, .cropper-wrapper{
+  width: 100%;
+  height: 100%;
+}

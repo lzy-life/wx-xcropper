@@ -1,0 +1,73 @@
+<!--components/xcropper/xcropper.wxml-->
+<view class='container'>
+  <view class='wrapper'>
+    <canvas canvas-id="original" class='originalCanvas' disable-scroll="true"
+     style="width:{{originalImage.width}}px;height:{{originalImage.height}}px;">
+    </canvas>
+    <block wx:for="{{cropperOpts.sizes}}" wx:for-item="size" wx:for-index="i" wx:key="{{i}}">
+      <canvas canvas-id='image{{size}}' style="width:{{size}}px;height:{{size/cropperOpts.ratio}}px;"></canvas>
+    </block>
+  </view>
+  <view class='cropper' hidden='{{0}}' bindtouchstart="touchstart" bindtouchmove="touchmove" bindtouchend='touchend'>
+    <image src='{{imageSrc}}' class='bg-image'
+    style="width:{{cropper.imgW}}px;height:{{cropper.imgH}}px;position:absolute;left:{{cropper.x}}px;top:{{cropper.y}}px;"></image>
+    <!-- 顶部工具栏 -->
+    <view class='top-toolbar'>
+      <view class='btn-group select-ratio'>
+        <view class='btn {{cropperOpts.ratio == 1 ? "active" : ""}}' data-ref='{{1}}' catchtap='setRatio' data-evt="y">1:1</view>
+        <view class='btn {{cropperOpts.ratio == 16/9 ? "active" : ""}}' data-ref='{{16/9}}' catchtap='setRatio' data-evt="y">16:9</view>
+        <view class='btn {{cropperOpts.ratio == 4/3 ? "active" : ""}}' data-ref='{{4/3}}' catchtap='setRatio' data-evt="y">4:3</view>
+        <view class='btn {{cropperOpts.ratio == 2/3 ? "active" : ""}}' data-ref='{{2/3}}' catchtap='setRatio' data-evt="y">2:3</view>
+        <view class='btn {{cropperOpts.ratio == 0 ? "active" : ""}}' data-ref='{{0}}' catchtap='setRatio' data-evt="y">自定义</view>
+      </view>
+      <view class='btn-group select-mode'>
+        <view class='btn {{cropperOpts.mode == "ratio" ? "active" : ""}}' data-ref="ratio" catchtap='setMode' data-evt="y">比例</view>
+        <view class='btn {{cropperOpts.mode == "size" ? "active" : ""}}' data-ref='size' catchtap='setMode' data-evt="y">尺寸</view>
+      </view>
+      <view class='btn-group select-shape'>
+        <view class='btn {{cropperOpts.shape == "rectangle" ? "active" : ""}}' data-ref='rectangle' catchtap='setShape' data-evt="y">矩形</view>
+        <view class='btn {{cropperOpts.shape == "circle" ? "active" : ""}}' data-ref='size' catchtap='setShape' data-evt="y">圆形</view>
+      </view>
+    </view>
+    <view class='top-size-info' hidden='{{0}}'>({{m.toFixed(cropperOpts.boxW,3)}} x {{m.toFixed(cropperOpts.boxH,3)}})</view>
+    <!-- 底部工具栏 -->
+    <view class='btm-toolbar'>
+      <view class='btm-toolbar-btn' data-evt="y" catchtap='cancel'>取 消</view>
+      <block wx:if="{{mode == 'multi'}}">
+        <view class='btm-toolbar-btn saveBtn' data-evt="y" catchtap='ensure'>{{originals.length ? "下一张" : "确 定"}}</view>
+      </block>
+      <block wx:else>
+        <view class='btm-toolbar-btn' data-evt="y" catchtap='rechoose'>重 置</view>
+        <view class='btm-toolbar-btn saveBtn' data-evt="y" catchtap='ensure'>确 定</view>
+      </block>
+    </view>
+    <!-- 选取框 -->
+    <view hidden='{{0}}' class="corpper-box"
+     catchtouchstart="boxStartMove" catchtouchmove="boxMoveing" catchtouchend='boxStopMove'
+     style="width:{{cropperOpts.boxW}}px;height:{{cropperOpts.boxH}}px;left:{{cropperOpts.boxX}}px;top:{{cropperOpts.boxY}}px;">
+      <view class='viewer-box'>
+        <view class="dashed-h"></view>
+        <view class="dashed-v"></view>
+        <view class="line-t" data-drag="t" catchtouchstart="dragStart" catchtouchmove="dragMove" catchtouchend='dragStop'></view>
+        <view class="line-r" data-drag="r" catchtouchstart="dragStart" catchtouchmove="dragMove" catchtouchend='dragStop'></view>
+        <view class="line-b" data-drag="b" catchtouchstart="dragStart" catchtouchmove="dragMove" catchtouchend='dragStop'></view>
+        <view class="line-l" data-drag="l" catchtouchstart="dragStart" catchtouchmove="dragMove" catchtouchend='dragStop'></view>
+        <view class="dot dot-tl" data-drag="tl" catchtouchstart="dragStart" catchtouchmove="dragMove" catchtouchend='dragStop'></view>
+        <view class="dot dot-t" data-drag="t" catchtouchstart="dragStart" catchtouchmove="dragMove" catchtouchend='dragStop'></view>
+        <view class="dot dot-tr" data-drag="tr" catchtouchstart="dragStart" catchtouchmove="dragMove" catchtouchend='dragStop'></view>
+        <view class="dot dot-l" data-drag="l" catchtouchstart="dragStart" catchtouchmove="dragMove" catchtouchend='dragStop'></view>
+        <view class="dot dot-r" data-drag="r" catchtouchstart="dragStart" catchtouchmove="dragMove" catchtouchend='dragStop'></view>
+        <view class="dot dot-bl" data-drag="bl" catchtouchstart="dragStart" catchtouchmove="dragMove" catchtouchend='dragStop'></view>
+        <view class="dot dot-b" data-drag="b" catchtouchstart="dragStart" catchtouchmove="dragMove" catchtouchend='dragStop'></view>
+        <view class="dot dot-br" data-drag="br" catchtouchstart="dragStart" catchtouchmove="dragMove" catchtouchend='dragStop'></view>
+      </view>
+      <text class='size-info' hidden='{{1}}'>({{m.toFixed(cropperOpts.boxW,3)}} x {{m.toFixed(cropperOpts.boxH,3)}})</text>
+    </view>
+  </view>
+</view>
+<wxs module="m">
+  function toFixed(number, size) {
+    return isNaN(number) ? number : Number(number).toFixed(size||3);
+  }
+  module.exports.toFixed = toFixed;
+</wxs>
