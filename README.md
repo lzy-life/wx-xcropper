@@ -28,7 +28,12 @@ Page({
     enableCropper: false, // 是否启用裁切
     cutImages: null, // 需要裁切的图片
     cropperOpts: { // 裁切的配置
-      ratio: 16/9
+      boxX: 10,
+      boxY: 195,
+      // boxOffsetX: 10,
+      // boxOffsetY: 10,
+      boxW: 200,
+      boxH: 170,
     }
   },
   onLoad: function () {
@@ -37,7 +42,7 @@ Page({
   chooseImage: function(evt) {
     let self = this;
     wx.chooseImage({
-      count: 9,
+      count: 9, // 最大图片数量
       sizeType: ["original", "compressed"],
       sourceType: ["album", "camera"],
       success: function (res) {
@@ -52,10 +57,23 @@ Page({
     });
   },
   success: function (evt) {
+    let ret;
+    if (Array.isArray(evt.detail)) {
+      ret = evt.detail;
+    } else {
+      ret = evt.detail.path;
+      // 测试返回的图片尺寸是否正确
+      wx.getImageInfo({
+        src: evt.detail.path,
+        success(res) {
+          console.log(res);
+        }
+      });
+    }
     this.setData({
       enableCropper: false,
       cutImages: null,
-      images: Aarray.isArray(evt.detail) ? evt.detail : evt.detail.path
+      images: ret
     });
   },
   failure: function (evt) {
